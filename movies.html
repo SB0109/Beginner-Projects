@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cinema Pulse — AI Movie Recommender</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #121212;
+      --card: #1e1e1e;
+      --card-hover: #252525;
+      --border: #2a2a2a;
+      --text: #e8e8e8;
+      --text-muted: #9a9a9a;
+      --accent: #f5a623;
+      --accent-hover: #ffb840;
+      --accent-glow: rgba(245, 166, 35, 0.35);
+      --error-bg: rgba(220, 53, 69, 0.12);
+      --error-border: rgba(220, 53, 69, 0.45);
+      --error-text: #ff8a8a;
+      --radius: 14px;
+      --shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Outfit", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(245, 166, 35, 0.08), transparent),
+        radial-gradient(ellipse 60% 40% at 100% 100%, rgba(80, 60, 120, 0.12), transparent);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrap {
+      position: relative;
+      z-index: 1;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 2.5rem 1.25rem 4rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    header h1 {
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: clamp(1.75rem, 5vw, 2.75rem);
+      font-weight: 700;
+      margin: 0 0 0.5rem;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #fff 0%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    header p {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      font-weight: 300;
+    }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.75rem;
+      box-shadow: var(--shadow);
+      margin-bottom: 2rem;
+    }
+
+    .form-grid {
+      display: grid;
+      gap: 1.25rem;
+    }
+
+    @media (min-width: 640px) {
+      .form-grid.two-col {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 0.45rem;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    input[type="password"],
+    input[type="text"],
+    select {
+      width: 100%;
+      padding: 0.85rem 1rem;
+      font-family: inherit;
+      font-size: 1rem;
+      color: var(--text);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input:focus,
+    select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    select {
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%239a9a9a' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 1rem center;
+      padding-right: 2.5rem;
+    }
+
+    .btn-primary {
+      display: block;
+      width: 100%;
+      margin-top: 0.5rem;
+      padding: 1rem 1.5rem;
+      font-family: inherit;
+      font-size: 1.05rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #121212;
+      background: linear-gradient(135deg, var(--accent) 0%, #e8940f 100%);
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.2s, filter 0.2s;
+      box-shadow: 0 4px 20px var(--accent-glow);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      filter: brightness(1.08);
+      box-shadow: 0 8px 28px var(--accent-glow);
+    }
+
+    .btn-primary:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    .status {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+    }
+
+    .spinner {
+      width: 44px;
+      height: 44px;
+      margin: 0 auto 1rem;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.85s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .status.loading p {
+      font-size: 1.1rem;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.6; }
+      50% { opacity: 1; }
+    }
+
+    .error-box {
+      background: var(--error-bg);
+      border: 1px solid var(--error-border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      color: var(--error-text);
+      margin-bottom: 1.5rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 0.95rem;
+    }
+
+    .error-box strong {
+      display: block;
+      margin-bottom: 0.35rem;
+      color: #ffb4b4;
+    }
+
+    .results-heading {
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 1.5rem;
+      margin: 0 0 1.25rem;
+      color: var(--text);
+    }
+
+    .cards {
+      display: grid;
+      gap: 1.25rem;
+    }
+
+    @media (min-width: 768px) {
+      .cards {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    .rec-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.35rem;
+      transition: transform 0.25s, border-color 0.25s, background 0.25s;
+      display: flex;
+      flex-direction: column;
+      min-height: 100%;
+    }
+
+    .rec-card:hover {
+      transform: translateY(-4px);
+      background: var(--card-hover);
+      border-color: rgba(245, 166, 35, 0.35);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+    }
+
+    .rec-card .rank {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin-bottom: 0.5rem;
+    }
+
+    .rec-card h3 {
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 1.2rem;
+      margin: 0 0 0.65rem;
+      line-height: 1.3;
+    }
+
+    .rec-card .year {
+      font-weight: 400;
+      color: var(--text-muted);
+      font-family: "Outfit", sans-serif;
+      font-size: 0.95rem;
+    }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      background: rgba(245, 166, 35, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(245, 166, 35, 0.3);
+      margin-bottom: 1rem;
+      align-self: flex-start;
+    }
+
+    .rec-card .plot {
+      font-size: 0.92rem;
+      color: var(--text-muted);
+      margin: 0 0 1rem;
+      flex-grow: 1;
+    }
+
+    .rec-card .why {
+      font-size: 0.88rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .rec-card .why-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      margin-bottom: 0.35rem;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 3rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Cinema Pulse: AI Movie Recommender</h1>
+      <p>Tell us your mood — we’ll curate three picks from the vault.</p>
+    </header>
+
+    <section class="panel" aria-labelledby="form-heading">
+      <h2 id="form-heading" class="hidden">Search form</h2>
+      <form id="recommend-form" class="form-grid" novalidate>
+        <div class="field">
+          <label for="api-key">Gemini API Key</label>
+          <input
+            type="password"
+            id="api-key"
+            name="apiKey"
+            autocomplete="off"
+            placeholder="Paste your Google AI Studio API key"
+            required
+          />
+        </div>
+
+        <div class="field">
+          <label for="vibe">Vibe / Mood</label>
+          <input
+            type="text"
+            id="vibe"
+            name="vibe"
+            placeholder="Mind-bending sci-fi thriller with a twist ending"
+            required
+          />
+        </div>
+
+        <div class="form-grid two-col">
+          <div class="field">
+            <label for="streaming">Streaming Service</label>
+            <select id="streaming" name="streaming">
+              <option value="Any">Any</option>
+              <option value="Netflix">Netflix</option>
+              <option value="Prime Video">Prime Video</option>
+              <option value="Hulu">Hulu</option>
+              <option value="Max">Max</option>
+              <option value="Disney+">Disney+</option>
+              <option value="Apple TV+">Apple TV+</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="content-type">Content Type</label>
+            <select id="content-type" name="contentType">
+              <option value="Movie">Movie</option>
+              <option value="TV Show">TV Show</option>
+              <option value="Any">Any</option>
+            </select>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary" id="submit-btn">
+          Find Recommendations
+        </button>
+      </form>
+    </section>
+
+    <div id="error-container" class="error-box hidden" role="alert"></div>
+
+    <div id="loading" class="status loading hidden" aria-live="polite">
+      <div class="spinner" aria-hidden="true"></div>
+      <p>Searching the vault…</p>
+    </div>
+
+    <section id="results-section" class="hidden" aria-live="polite">
+      <h2 class="results-heading">Your curated picks</h2>
+      <div id="results" class="cards"></div>
+    </section>
+
+    <footer>
+      Powered by Google Gemini · Your API key stays in the browser and is never sent anywhere except Google.
+    </footer>
+  </div>
+
+  <script>
+    (function () {
+      const MODEL = "gemini-3.8-flash";
+      const API_BASE =
+        "https://generativelanguage.googleapis.com/v1beta/models/" +
+        MODEL +
+        ":generateContent";
+
+      const form = document.getElementById("recommend-form");
+      const apiKeyInput = document.getElementById("api-key");
+      const vibeInput = document.getElementById("vibe");
+      const streamingSelect = document.getElementById("streaming");
+      const contentTypeSelect = document.getElementById("content-type");
+      const submitBtn = document.getElementById("submit-btn");
+      const errorContainer = document.getElementById("error-container");
+      const loadingEl = document.getElementById("loading");
+      const resultsSection = document.getElementById("results-section");
+      const resultsEl = document.getElementById("results");
+
+      function showError(message) {
+        errorContainer.innerHTML =
+          "<strong>Something went wrong</strong>" + escapeHtml(message);
+        errorContainer.classList.remove("hidden");
+      }
+
+      function clearError() {
+        errorContainer.classList.add("hidden");
+        errorContainer.textContent = "";
+      }
+
+      function setLoading(isLoading) {
+        loadingEl.classList.toggle("hidden", !isLoading);
+        submitBtn.disabled = isLoading;
+        if (isLoading) {
+          resultsSection.classList.add("hidden");
+          resultsEl.innerHTML = "";
+        }
+      }
+
+      function escapeHtml(str) {
+        const div = document.createElement("div");
+        div.textContent = str;
+        return div.innerHTML;
+      }
+
+      function buildPrompt(vibe, streaming, contentType) {
+        return (
+          "You are an expert film and television curator. Based on these preferences, recommend exactly 3 titles.\n\n" +
+          "User vibe/mood: " +
+          vibe +
+          "\n" +
+          "Preferred streaming service (or Any): " +
+          streaming +
+          "\n" +
+          "Content type: " +
+          contentType +
+          "\n\n" +
+          "Rules:\n" +
+          "- Return ONLY valid JSON (no markdown fences, no extra text).\n" +
+          "- If a specific streaming service was chosen (not Any), prefer titles commonly available there; if unsure, note the most likely platform.\n" +
+          "- Match content type: Movie, TV Show, or either if Any.\n" +
+          "- Use real, well-known titles.\n\n" +
+          "JSON shape:\n" +
+          "{\n" +
+          '  "recommendations": [\n' +
+          "    {\n" +
+          '      "title": "string",\n' +
+          '      "year": number,\n' +
+          '      "streamingPlatform": "string",\n' +
+          '      "plotSummary": "one sentence",\n' +
+          '      "whyYoullLoveIt": "1-2 sentences tying back to the vibe"\n' +
+          "    }\n" +
+          "  ]\n" +
+          "}\n"
+        );
+      }
+
+      function parseRecommendations(text) {
+        let raw = text.trim();
+        const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+        if (fenceMatch) raw = fenceMatch[1].trim();
+
+        const parsed = JSON.parse(raw);
+        const list = parsed.recommendations || parsed;
+        if (!Array.isArray(list) || list.length === 0) {
+          throw new Error("The model returned an unexpected format. Try again.");
+        }
+        return list.slice(0, 3).map(normalizeRec);
+      }
+
+      function normalizeRec(item) {
+        return {
+          title: String(item.title || "Unknown"),
+          year: item.year != null ? String(item.year) : "—",
+          streamingPlatform: String(
+            item.streamingPlatform || item.platform || "Streaming"
+          ),
+          plotSummary: String(
+            item.plotSummary || item.plot || item.summary || ""
+          ),
+          whyYoullLoveIt: String(
+            item.whyYoullLoveIt || item.why || item.matchReason || ""
+          ),
+        };
+      }
+
+      function renderCards(recommendations) {
+        resultsEl.innerHTML = recommendations
+          .map(function (rec, index) {
+            return (
+              '<article class="rec-card">' +
+              '<span class="rank">Pick ' +
+              (index + 1) +
+              "</span>" +
+              "<h3>" +
+              escapeHtml(rec.title) +
+              ' <span class="year">(' +
+              escapeHtml(rec.year) +
+              ")</span></h3>" +
+              '<span class="tag">' +
+              escapeHtml(rec.streamingPlatform) +
+              "</span>" +
+              '<p class="plot">' +
+              escapeHtml(rec.plotSummary) +
+              "</p>" +
+              '<div class="why">' +
+              '<div class="why-label">Why You\'ll Love It</div>' +
+              escapeHtml(rec.whyYoullLoveIt) +
+              "</div>" +
+              "</article>"
+            );
+          })
+          .join("");
+        resultsSection.classList.remove("hidden");
+      }
+
+      async function fetchRecommendations(apiKey, vibe, streaming, contentType) {
+        const url = API_BASE + "?key=" + encodeURIComponent(apiKey);
+        const body = {
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: buildPrompt(vibe, streaming, contentType) }],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.9,
+            maxOutputTokens: 2048,
+            responseMimeType: "application/json",
+          },
+        };
+
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+
+        const data = await response.json().catch(function () {
+          return {};
+        });
+
+        if (!response.ok) {
+          const msg =
+            data.error && data.error.message
+              ? data.error.message
+              : "HTTP " + response.status + " " + response.statusText;
+          throw new Error(msg);
+        }
+
+        const candidate = data.candidates && data.candidates[0];
+        if (!candidate) {
+          throw new Error(
+            "No response from the model. It may have blocked the request or the model name may be unavailable."
+          );
+        }
+
+        if (candidate.finishReason === "SAFETY") {
+          throw new Error("The model declined to generate recommendations due to safety filters.");
+        }
+
+        const parts = candidate.content && candidate.content.parts;
+        const text =
+          parts && parts[0] && parts[0].text
+            ? parts[0].text
+            : null;
+
+        if (!text) {
+          throw new Error("Empty response from Gemini. Check your API key and model access.");
+        }
+
+        return parseRecommendations(text);
+      }
+
+      form.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        clearError();
+
+        const apiKey = apiKeyInput.value.trim();
+        const vibe = vibeInput.value.trim();
+        const streaming = streamingSelect.value;
+        const contentType = contentTypeSelect.value;
+
+        if (!apiKey) {
+          showError(
+            "Please enter your Gemini API key. Get one free at Google AI Studio (aistudio.google.com/apikey)."
+          );
+          apiKeyInput.focus();
+          return;
+        }
+
+        if (!vibe) {
+          showError("Please describe the vibe or mood you're looking for.");
+          vibeInput.focus();
+          return;
+        }
+
+        setLoading(true);
+
+        try {
+          const recommendations = await fetchRecommendations(
+            apiKey,
+            vibe,
+            streaming,
+            contentType
+          );
+          renderCards(recommendations);
+        } catch (err) {
+          showError(err.message || String(err));
+        } finally {
+          setLoading(false);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
